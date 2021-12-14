@@ -2,6 +2,8 @@
 // All rights reserved. Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
+import 'dart:io';
+
 import 'package:intl/intl.dart';
 import 'package:xml/xml.dart';
 import 'package:testreport/testreport.dart';
@@ -40,9 +42,7 @@ class XmlReport implements JUnitReport {
         if (test.isSkipped) {
           children.add(elem('skipped', _noAttributes, _noChildren));
         }
-        if (test.problems.isNotEmpty) children.add(_problems(test.problems));
-
-        _prints(test.prints, children);
+        if (test.prints.isNotEmpty && test.problems.isNotEmpty) children.add(_errorMessage(test.prints, test.problems));
 
         cases.add(elem(
             'testcase',
@@ -115,72 +115,10 @@ class XmlReport implements JUnitReport {
             _noChildren)
       ]);
 
-  XmlElement _problems(Iterable<Problem> problems) {
-    if (problems.length == 1) {
-      var problem = problems.first;
-      var message = problem.message;
-      if (message != null && !message.contains('\n')) {
-        var stacktrace = problem.stacktrace;
-        return elem(
-            problem.isFailure ? 'failure' : 'error',
-            <String, dynamic>{'message': message},
-            stacktrace == null ? _noChildren : <XmlNode>[txt(stacktrace)]);
-      }
-    }
-
-    var failures = problems.where((p) => p.isFailure);
-    var errors = problems.where((p) => !p.isFailure);
-    var details = <String>[
-      ..._details(failures),
-      ..._details(errors),
-    ];
-
-    var type = errors.isEmpty ? 'failure' : 'error';
+  XmlElement _errorMessage(Iterable<String> output, Iterable<Problem> problems) {
+    var message = output.last.replaceAll('ΓòÉ', '').replaceFirst('Γòí', '==').replaceFirst('Γò₧', '==');
     return elem(
-        type,
-        <String, dynamic>{'message': _message(failures.length, errors.length)},
-        <XmlNode>[txt(details.join(r'\n\n\n'))]);
-  }
-
-  Iterable<String> _details(Iterable<Problem> problems) {
-    final more = problems.length > 1;
-    var count = 0;
-    return problems.map((p) => _report(more, ++count, p));
-  }
-
-  String _report(bool more, int index, Problem problem) {
-    var message = problem.message ?? '';
-    var stacktrace = problem.stacktrace ?? '';
-    var short = '';
-    String long;
-    if (message.isEmpty) {
-      if (stacktrace.isEmpty) short = ' no details available';
-    } else if (!message.contains('\n')) {
-      short = ' $message';
-    } else {
-      long = message;
-    }
-    if (message.isNotEmpty && problem.isFailure) stacktrace = '';
-
-    var report = <String>[];
-    var type = problem.isFailure ? 'Failure' : 'Error';
-    if (more) {
-      report.add('$type #$index:$short');
-    } else {
-      report.add('$type:$short');
-    }
-    if (long != null) report.add(long);
-    if (stacktrace.isNotEmpty) report.add('Stacktrace:\n$stacktrace');
-    return report.join(r'\n\n');
-  }
-
-  String _message(int failures, int errors) {
-    var texts = <String>[];
-    if (failures == 1) texts.add('1 failure');
-    if (failures > 1) texts.add('$failures failures');
-    if (errors == 1) texts.add('1 error');
-    if (errors > 1) texts.add('$errors errors');
-    texts.add('see stacktrace for details');
-    return texts.join(', ');
+      'error',
+      <String, dynamic>{'message': problems.first.message}, <XmlNode>[txt(message)]);
   }
 }
