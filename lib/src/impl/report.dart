@@ -116,9 +116,12 @@ class XmlReport implements JUnitReport {
       ]);
 
   XmlElement _errorMessage(Iterable<String> output, Iterable<Problem> problems) {
-    var message = output.last.replaceAll('ΓòÉ', '').replaceFirst('Γòí', '==').replaceFirst('Γò₧', '==');
+    print(problems.first.message);
+    output.forEach((message) => print(message));
+    print('\n\n');
+
     return elem(
       'error',
-      <String, dynamic>{'message': problems.first.message}, <XmlNode>[txt(message)]);
+      <String, dynamic>{'message': problems.first.message}, <XmlNode>[txt(output.firstWhere((element) => element.startsWith('EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK', 4)))]);
   }
 }
