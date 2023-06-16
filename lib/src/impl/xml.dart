@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2019, TOPdesk. Please see the AUTHORS file for details.
+// Copyright (c) 2016-2021, TOPdesk. Please see the AUTHORS file for details.
 // All rights reserved. Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -23,17 +23,30 @@ XmlElement elem(
     );
 
 XmlAttribute attr(String name, dynamic value) =>
-    XmlAttribute(_name(name), value.toString());
+    XmlAttribute(_name(name), '$value');
 
 XmlText txt(String text) => XmlText(text);
 
-String toXmlString(XmlDocument document) => document.toXmlString(
+String toXmlString(XmlDocument document) => document
+    .toXmlString(
       pretty: true,
       preserveWhitespace: (XmlNode node) {
         if (node is! XmlElement) return false;
-        return ['system-out', 'error', 'failure']
-            .contains((node as XmlElement).name.local);
+        return const [
+          'system-out',
+          'error',
+          'failure',
+        ].contains(node.name.local);
       },
-    );
+    )
+    .replaceAllMapped(_highlyDiscouraged, _mapDiscouraged);
+
+// Lists all C0 and C1 control codes except NUL, HT, LF, CR and NEL
+final _highlyDiscouraged = RegExp(
+    '[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f-\u0084\u0086-\u009f]',
+    unicode: true);
+
+String _mapDiscouraged(Match match) =>
+    match.group(0)!.codeUnits.map((unit) => '&#$unit;').join();
 
 XmlName _name(String name) => XmlName.fromString(name);

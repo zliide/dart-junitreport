@@ -5,14 +5,19 @@
 import 'package:test/test.dart';
 
 void main() {
-  test('succesful test', () {
+  test('successful test', () {
     expect('', '');
   });
 
-  test('succesful test with output', () {
+  test('successful test with output', () {
     print('a printed line');
     print('and another on printed line');
     print('and even\ntwo in one go');
+    expect('', '');
+  });
+
+  test('output with control character ', () {
+    print('a\t tab should be fine but bell not \u0008!');
     expect('', '');
   });
 

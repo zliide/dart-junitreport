@@ -1,8 +1,6 @@
-// Copyright (c) 2017-2019, TOPdesk. Please see the AUTHORS file for details.
+// Copyright (c) 2017-2021, TOPdesk. Please see the AUTHORS file for details.
 // All rights reserved. Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
-
-import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:xml/xml.dart';
@@ -26,34 +24,36 @@ class XmlReport implements JUnitReport {
 
   @override
   String toXml(Report report) {
-    var suites = <XmlNode>[];
-    for (var suite in report.suites) {
-      var cases = <XmlNode>[];
-      var prints = <XmlNode>[];
-      var className = _pathToClassName(suite.path);
+    final suites = <XmlNode>[];
+    for (final suite in report.suites) {
+      final cases = <XmlNode>[];
+      final prints = <XmlNode>[];
+      final className = _pathToClassName(suite.path);
 
-      for (var test in suite.allTests) {
+      for (final test in suite.allTests) {
         if (test.isHidden) {
           _prints(test.prints, prints);
           continue;
         }
 
-        var children = <XmlNode>[];
+        final children = <XmlNode>[];
         if (test.isSkipped) {
           children.add(elem('skipped', _noAttributes, _noChildren));
         }
-        if (test.prints.isNotEmpty && test.problems.isNotEmpty) children.add(_errorMessage(test.prints, test.problems));
+        if (test.prints.isNotEmpty && test.problems.isNotEmpty) {
+          children.add(_errorMessage(test.prints, test.problems));
+        }
 
         cases.add(elem(
             'testcase',
             <String, dynamic>{
               'classname': className,
               'name': test.name,
-              'time': _milliseconds.format((test.duration) / 1000.0)
+              'time': _milliseconds.format(test.duration / 1000.0)
             },
             children));
       }
-      var attributes = <String, dynamic>{
+      final attributes = <String, dynamic>{
         'errors': suite.problems
             .where((t) => !t.problems.every((p) => p.isFailure))
             .length,
@@ -65,7 +65,7 @@ class XmlReport implements JUnitReport {
         'name': className
       };
       if (report.timestamp != null) {
-        attributes['timestamp'] = _dateFormat.format(report.timestamp.toUtc());
+        attributes['timestamp'] = _dateFormat.format(report.timestamp!.toUtc());
       }
       suites.add(elem('testsuite', attributes,
           _suiteChildren(suite.platform, cases, prints)));
@@ -94,11 +94,15 @@ class XmlReport implements JUnitReport {
   }
 
   List<XmlNode> _suiteChildren(
-      String platform, Iterable<XmlNode> cases, Iterable<XmlNode> prints) {
-    var properties =
-        platform == null ? <XmlNode>[] : <XmlNode>[(_properties(platform))];
-    return properties..addAll(cases)..addAll(prints);
-  }
+    String? platform,
+    Iterable<XmlNode> cases,
+    Iterable<XmlNode> prints,
+  ) =>
+      <XmlNode>[
+        ..._properties(platform),
+        ...cases,
+        ...prints,
+      ];
 
   void _prints(Iterable<String> from, List<XmlNode> to) {
     if (from.isNotEmpty) {
@@ -107,21 +111,30 @@ class XmlReport implements JUnitReport {
     }
   }
 
-  XmlElement _properties(String platform) =>
-      elem('properties', _noAttributes, <XmlNode>[
-        elem(
-            'property',
-            <String, dynamic>{'name': 'platform', 'value': platform},
-            _noChildren)
-      ]);
+  List<XmlElement> _properties(String? platform) => platform == null
+      ? []
+      : [
+          elem('properties', _noAttributes, <XmlNode>[
+            elem(
+                'property',
+                <String, dynamic>{'name': 'platform', 'value': platform},
+                _noChildren)
+          ])
+        ];
 
-  XmlElement _errorMessage(Iterable<String> output, Iterable<Problem> problems) {
+  XmlElement _errorMessage(
+      Iterable<String> output, Iterable<Problem> problems) {
     print(problems.first.message);
-    output.forEach((message) => print(message));
+    for (var message in output) {
+      print(message);
+    }
     print('\n\n');
 
-    return elem(
-      'error',
-      <String, dynamic>{'message': problems.first.message}, <XmlNode>[txt(output.firstWhere((element) => element.startsWith('EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK', 4)))]);
+    return elem('error', <String, dynamic>{
+      'message': problems.first.message
+    }, <XmlNode>[
+      txt(output.firstWhere((element) =>
+          element.startsWith('EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK', 4)))
+    ]);
   }
 }
